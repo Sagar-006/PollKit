@@ -1,0 +1,13 @@
+# Server
+server/node_modules
+server/.env
+
+# Client
+polling-client/node_modules
+polling-client/.env
+polling-client/.next
+polling-client/out
+
+# General
+.DS_Store
+*.log

@@ -1,0 +1,43 @@
+import nodemailer from "nodemailer";
+
+
+// Create a transporter using SMTP
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+
+const sendEmail = async(to,subject,html) => {
+    await transporter.sendMail({
+        from :`"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}`,
+        to,
+        subject,
+        html,
+    })
+    console.log("email sended");
+
+}
+const sendVerificationEmail = async(email,token) => {
+    const url = `${process.env.CLIENT_URL}/verify-email/${token}`;
+    await sendEmail (
+        email,
+        "Verify your email",
+        `<h2>Welcome!</h2><p>Click <a href="${url}">here</a> to verify your email.</p>`
+    )
+};
+
+const sendResetPasswordEmail = async(email,token) => {
+    const url = `${process.env.CLIENT_URL}/reset/password/${token}`
+    await sendEmail(
+      email,
+      "Reset you password",
+      `<h2>Password reset</h2><p>click <a href= "${url}">here</a> to reset your password. This link expires in 15 minutes.</P>`,
+    );
+}
+
+export { sendVerificationEmail, sendResetPasswordEmail };
