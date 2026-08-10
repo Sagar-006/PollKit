@@ -17,6 +17,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { useState } from "react";
 import { useRouter } from "next/navigation"
+import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 
 interface FormData {
@@ -27,13 +29,15 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const router = useRouter();
 
   const [formData,setFormData] = useState<FormData>({
     email:"",
     password:""
   });
+  const [loading,setLoading] = useState<boolean>(false);
 
   const handleChange = (e:React.ChangeEvent<HTMLInputElement>) => {
     const {name,value} = e.target;
@@ -42,41 +46,46 @@ export function LoginForm({
       ...prev,
       [name]:value
     }))
-  }
+  };
 
   const handleSubmit = async(e:any) => {
-    e.preventDefault();
-
-    console.log("submitted form", formData);
-
-    const {email,password} = formData;
-
-    const login = await fetch("http://localhost:8080/api/auth/login", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await login.json();
-
-    setFormData({
-      email:"",
-      password:""
-    });
-
-    console.log("login response", data);
-
     
-    if(data.success){
-      console.log("in data.success")
-      localStorage.setItem("accessToken",data.data.accessToken);
+    try{
+      e.preventDefault();
+      setLoading(true);
+      const { email, password } = formData;
 
-       console.log(localStorage.getItem("accessToken"));
+      const login = await fetch(
+        "/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        },
+      );
 
-      router.push("/dashboard");
+      const data = await login.json();
+
+      if (!login.ok) {
+        // ✅ API errors (400, 401) come here — show backend message
+        toast.error(data.message || "Something went wrong.");
+        return;
+      }
+      
+      if (data.success) {
+        toast.success(data.message);
+        setFormData({
+          email: "",
+          password: "",
+        });
+        router.push(redirect || "/dashboard");
+      }
+    }catch(e:any) {
+      toast.error("Network error. Please try again.");
+    }finally{
+      setLoading(false)
     }
 
   }
@@ -100,7 +109,7 @@ export function LoginForm({
                   value={formData.email}
                   onChange={handleChange}
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="john@example.com"
                   required
                 />
               </Field>
@@ -117,10 +126,10 @@ export function LoginForm({
                 <Input id="password" name="password" value={formData.password} onChange={handleChange} type="password" required />
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
-                {/* <Button variant="outline" type="button">
-                  Login with Google
-                </Button> */}
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Logging...": "Login" }
+                </Button>
+                
                 <FieldDescription className="text-center">
                   Don&apos;t have an account? <a href="/signup">Sign up</a>
                 </FieldDescription>

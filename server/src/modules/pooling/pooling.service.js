@@ -8,20 +8,37 @@ import { getIO } from "../../socket.js";
 const createPool = async (
   userId,
   question,
-  poolOptions,
+  pollOptions,
   anonymousVoting = false,
+  expiresAt,
 ) => {
-  console.log("at create pool service.", poolOptions);
 
-  if (!userId || !question || !poolOptions) {
-    throw ApiError.conflict("Something is missing");
+
+  
+  if (!userId || !question || !pollOptions) {
+    throw ApiError.conflict("Something is missing in form!");
   }
 
-  if (poolOptions.length < 2) {
+  if (!expiresAt) {
+    throw ApiError.conflict("Invalid date format.");
+  }
+
+  const expiresAtDate = new Date(expiresAt);
+
+  if (expiresAtDate <= new Date()) {
+    throw ApiError.conflict("Expiry date must be in the future.");
+  }
+
+  const validOptions = pollOptions.filter(
+    (option) => option.trim() !== ""
+  )
+
+  console.log("valid options",validOptions);
+  if (validOptions.length < 2) {
     throw ApiError.conflict("Atleast two options are needed in pool.");
   }
 
-  if (poolOptions.length > 5) {
+  if (validOptions.length > 4) {
     throw ApiError.conflict("Maximum 4 options are allowed.");
   }
 
@@ -30,13 +47,12 @@ const createPool = async (
     .values({
       userId: userId,
       question: question,
+      expiresAt: expiresAtDate,
       anonymousVoting: anonymousVoting,
     })
     .returning();
 
-  console.log("pool", pool);
-
-  for (const option of poolOptions) {
+  for (const option of validOptions) {
     const optionInsert = await db
       .insert(options)
       .values({
@@ -44,11 +60,9 @@ const createPool = async (
         poolId: pool.id,
       })
       .returning();
-
-    console.log("option insert", optionInsert);
   }
 
-  return "poll is created.";
+  return "poll created successfully!";
 };
 
 const allPools = async (userId) => {
@@ -57,7 +71,6 @@ const allPools = async (userId) => {
     .from(pools)
     .where(eq(pools.userId, userId));
 
-  console.log("userAllPools", userAllPools);
   return userAllPools;
 };
 
@@ -66,9 +79,6 @@ const deletePool = async (poolId) => {
     throw ApiError.conflict("pool ID is missing");
   }
 
-  console.log("poolID", poolId);
-
-  // const optionsResponse = await db.delete(options).where(eq(options.poolId,poolId))
   const deleted = await db
     .delete(pools)
     .where(eq(pools.id, poolId))
@@ -78,14 +88,12 @@ const deletePool = async (poolId) => {
     throw ApiError.badRequest("Pool not found");
   }
 
-  console.log("deleted", deleted);
-
-  return "Pool deleted successfully. ";
+  return "Pool deleted successfully.";
 };
 
 const getPoll = async (pollId) => {
   if (!pollId) {
-    throw ApiError.conflict("pool ID is missing");
+    throw ApiError.conflict("poll ID is missing");
   }
 
   const [poll] = await db
@@ -99,10 +107,6 @@ const getPoll = async (pollId) => {
     .from(options)
     .where(eq(options.poolId, pollId));
 
-  console.log("poll", poll);
-
-  console.log("options", getOptions);
-
   return {
     poll,
     getOptions,
@@ -110,76 +114,87 @@ const getPoll = async (pollId) => {
 };
 
 const createVote = async ({ userId, pollId, optionId, ip }) => {
+
+  console.log("at createpoll service");
+
+
   if (!pollId || !optionId) {
     throw ApiError.badRequest("missing pollId or optionId");
   }
-  console.log("ip", ip);
 
-  const [poll] = await db.select().from(pools).where(eq(pools.id,pollId)).limit(1);
+  const [poll] = await db
+    .select()
+    .from(pools)
+    .where(eq(pools.id, pollId))
+    .limit(1);
 
   if (!poll) {
     throw ApiError.notFound("Poll not found");
   }
 
-  if (new Date() > new Date(poll.expiresAt) && poll.isActive) {
-    await db.update(pools).set({ isActive: false }).where(eq(pools.id, pollId));
-
-    poll.isActive = false; // update local object
-  }
-
   if (!poll.isActive || poll.isPublished) {
-    const result = await getPublicResult(pollId);
     return {
       status: "closed",
       message: "Poll is no longer accepting votes",
-      result,
+      result:null,
     };
+  }
+  
+  if(!poll.anonymousVoting && !userId){
+    throw ApiError.unauthorized("You must be logged in to vote.")
   };
 
-  if (userId) {
-    const alreadyVoted = await db
-      .select()
-      .from(votes)
-      .where(and(eq(votes.pollId, pollId), eq(votes.userId, userId)));
-    if (alreadyVoted.length !== 0) {
-      throw ApiError.badRequest("you already voted for this poll");
+   if(userId){
+     const [existingVote] = await db
+       .select()
+       .from(votes)
+       .where(and(eq(votes.pollId, pollId), eq(votes.userId, userId)))
+       .limit(1);
+
+     if (existingVote) {
+       return {
+         message: "you already voted",
+       };
+     }
+   }
+
+    if(!userId && poll.anonymousVoting){
+      const [existingIp] = await db
+        .select()
+        .from(votes)
+        .where(and(eq(votes.pollId, pollId), eq(votes.ipAddress, ip)))
+        .limit(1);
+
+      if (existingIp) {
+        return {
+          message: "you already voted",
+        };
+      }
     }
-  }
 
-  if (!userId && ip) {
-    const alreadyVoted = await db
-      .select()
-      .from(votes)
-      .where(and(eq(votes.pollId, pollId), eq(votes.ipAddress, ip)));
+    const vote = await db
+      .insert(votes)
+      .values({
+        optionId: optionId,
+        pollId: pollId,
+        userId: userId ? userId : null,
+        ipAddress: userId ? null : ip || null,
+      })
+      .returning();
 
-    if (alreadyVoted.length !== 0) {
-      throw ApiError.badRequest(
-        "you already voted for this poll [for anonoumous user]",
-      );
+
+    if (vote.length === 0) {
+      throw ApiError.conflict("failed at voting.");
     }
+    console.log("after vote complete",vote[0]);
+
+    return {
+      result: vote[0],
+      message: "vote successfully",
+    };
   }
-
-  const vote = await db
-    .insert(votes)
-    .values({
-      optionId: optionId,
-      pollId: pollId,
-      userId: userId || null,
-      ipAddress: ip || null,
-    })
-    .returning();
-
-  console.log("vote", vote);
-
-  if (vote.length === 0) {
-    throw ApiError.conflict("failed at voting.");
-  }
-
-  return vote[0];
-};
 
 const getAnalytics = async (pollId, userId) => {
-  console.log("pollID in service", pollId)
   if (!pollId) {
     throw ApiError.conflict("poll ID is missing");
   }
@@ -190,9 +205,6 @@ const getAnalytics = async (pollId, userId) => {
     .where(eq(pools.id, pollId))
     .limit(1);
 
-  console.log("pool name", poll);
-  // console.log("user id in analytics service", userId);
-  // console.log("poll creator id in analytics service", poll.userId);
 
   if (poll.userId !== userId) {
     throw ApiError.conflict("you are not the creator of this poll");
@@ -209,7 +221,6 @@ const getAnalytics = async (pollId, userId) => {
     .where(eq(options.poolId, pollId))
     .groupBy(options.id, options.option);
 
-  console.log("optionsWithCount", optionsWithCount);
 
   return {
     poll,
@@ -232,19 +243,22 @@ const getPublicPoll = async (pollId) => {
     .where(eq(pools.id, pollId))
     .limit(1);
 
-  console.log("poll in public route", poll);
+      if (!poll) {
+        throw ApiError.notFound("Poll not found");
+      }
 
-  if (!poll) {
-    throw ApiError.notFound("Poll not found");
-  }
+      const now = new Date();
+      const expiresAt = new Date(poll.expiresAt);
 
-  if(new Date() > new Date(poll.expiresAt) && poll.isActive ){
-    await db.update(pools)
-    .set({isActive:false})
-    .where(eq(pools.id,pollId));
 
-    poll.isActive = false;
-  }
+    if (now >= expiresAt && !poll.isPublished) {
+      return {
+        status: "pending",
+        message: "This poll has expired. Results will appear once published.",
+      };
+    }
+
+
 
   if (!poll.isActive || poll.isPublished) {
     const result = await getPublicResult(pollId);
@@ -252,7 +266,7 @@ const getPublicPoll = async (pollId) => {
     return {
       status: "closed",
       message: "Poll is no longer accepting votes.",
-      result
+      result,
     };
   }
 
@@ -272,42 +286,48 @@ const publishPoll = async (pollId, userId) => {
   if (!pollId) {
     throw ApiError.conflict("poll ID is missing");
   }
-  
+
   const [updatePoll] = await db
-  .update(pools)
-  .set({ isActive: false, isPublished: true })
-  .where(and(eq(pools.id, pollId)), eq(pools.userId, userId), eq(pools.isPublished, false))
-  .returning();
-  
-  console.log("updatePoll", updatePoll);
-  
+    .update(pools)
+    .set({ isActive: false, isPublished: true })
+    .where(
+      and(
+      eq(pools.id, pollId),
+      eq(pools.userId, userId),
+      eq(pools.isPublished, false)
+    ),
+    )
+    .returning();
+
+
   if (!updatePoll) {
     throw ApiError.conflict("Poll not found or you are not the creator");
   }
-  
+
   return {
     message: "poll results are now public!",
     poll: updatePoll,
   };
 };
 
-const getPublicResult = async(pollId)=> {
-  console.log("pollid in service",pollId)
+const getPublicResult = async (pollId) => {
   if (!pollId) {
     throw ApiError.conflict("poll ID is missing");
   }
-  
-  const [findPoll] = await db.select().from(pools).where(eq(pools.id,pollId)).limit(1);
-  
-  if(!findPoll){
-    throw ApiError.notFound("poll not found!");
-    
-  }
-  
-  if(!findPoll.isPublished){
-    throw ApiError.conflict("poll results not published yet!");
 
-  };
+  const [findPoll] = await db
+    .select()
+    .from(pools)
+    .where(eq(pools.id, pollId))
+    .limit(1);
+
+  if (!findPoll) {
+    throw ApiError.notFound("poll not found!");
+  }
+
+  if (!findPoll.isPublished) {
+    throw ApiError.conflict("poll results not published yet!");
+  }
 
   const optionsWithCount = await db
     .select({
@@ -320,15 +340,16 @@ const getPublicResult = async(pollId)=> {
     .where(eq(options.poolId, pollId))
     .groupBy(options.id, options.option);
 
-  console.log("optionsWithCount", optionsWithCount);
 
   return {
-    poll:findPoll,
-    totalVotes:optionsWithCount.reduce((acc,curr) => acc + Number(curr.count),0),
-    optionsWithCount
-  }
-  
-}
+    poll: findPoll,
+    totalVotes: optionsWithCount.reduce(
+      (acc, curr) => acc + Number(curr.count),
+      0,
+    ),
+    optionsWithCount,
+  };
+};
 
 export {
   createPool,

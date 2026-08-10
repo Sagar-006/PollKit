@@ -19,7 +19,6 @@ const sendEmail = async(to,subject,html) => {
         subject,
         html,
     })
-    console.log("email sended");
 
 }
 const sendVerificationEmail = async(email,token) => {

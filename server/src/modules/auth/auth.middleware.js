@@ -1,35 +1,56 @@
 import ApiError from "../../common/utils/api-error.js";
-import {verifyAccessToken} from "../../common/utils/jwt.utils.js";
+import { verifyAccessToken } from "../../common/utils/jwt.utils.js";
 import users from "./auth.model.js";
 import { db } from "../../common/config/db.js";
 import { eq } from "drizzle-orm";
 
-const isLoggedIn = async (req,res,next) => {
-    let token ;
+const isLoggedIn = async (req, res, next) => {
+  const accessToken = req.cookies.accessToken;
 
-    if (req.headers.authorization?.startsWith("Bearer")) {
-      token = req.headers.authorization.split(" ")[1];
+  if (!accessToken) {
+    return res.status(419).json({
+      success: false,
+      message: "Access token missing",
+    });
+  }
+
+  try {
+    const decoded = verifyAccessToken(accessToken);
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, decoded.id))
+      .limit(1);
+
+    if (!user) {
+      return next(
+        ApiError.unauthorized("You are not authorized for this request."),
+      );
     }
-
-    if(!token) throw ApiError.unauthorized("Invalid token");
-
-    const decoded = verifyAccessToken(token);
-
-    // console.log("in "decoded)
-
-    const user = await db.select().from(users).where(eq(users.id,decoded.id)).limit(1);
-    console.log("user in LoggedIn middleware",user)
-    if(user.length === 0) throw ApiError.unauthorized("You are not authorized for this request.");
 
     req.user = {
-        id:user[0].id,
-        name:user[0].name,
-        email:user[0].email,
-        role:user[0].role
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    next();
+  } catch (e) {
+    if (e.name === "TokenExpiredError") {
+      return res.status(419).json({
+        success: false,
+        message: "Access token expired",
+      });
     }
 
-    next()
+    if (e.name === "JsonWebTokenError") {
+      return next(ApiError.unauthorized("Invalid access token"));
+    }
 
-}
+    return next(e);
+  }
+};
 
-export {isLoggedIn}
+export { isLoggedIn };

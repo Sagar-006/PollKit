@@ -1,3 +1,13 @@
 .env
 node_modules/
 *.log
+
+
+# 1. Project explanation        ← always first
+# 2. Event loop output questions ← asked every time
+# 3. JS concepts (closure, this, shallow/deep copy)
+# 4. Database (indexing, ACID)
+# 5. React hooks
+# 6. Next.js rendering
+# 7. OOPs
+# 8. One coding question practice

@@ -9,6 +9,7 @@ const router = Router();
 
 router.post("/register",validate(RegisterDto), controller.register);
 router.post("/login",validate(LoginDto),controller.login);
+router.post("/refreshtoken",controller.refreshToken)
 router.get("/myprofile", isLoggedIn, controller.myProfile);
 router.post("/logout",isLoggedIn, controller.logout);
 

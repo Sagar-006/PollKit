@@ -12,7 +12,6 @@ import {
   generateResetToken,
 } from "../../common/utils/jwt.utils.js";
 
-// this function is for hashing. sagar you need to learn about this
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 import { db } from "../../common/config/db.js";
@@ -21,7 +20,6 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 const register = async ({ name, email, password }) => {
-
   // check existing user
   const existingUser = await db
     .select()
@@ -30,7 +28,7 @@ const register = async ({ name, email, password }) => {
 
   if (existingUser.length > 0) {
     throw new Error("Email already exists.");
-  };
+  }
 
   // hash password
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -52,7 +50,6 @@ const register = async ({ name, email, password }) => {
 };
 
 const login = async ({ email, password }) => {
-
   const user = await db
     .select()
     .from(users)
@@ -64,39 +61,38 @@ const login = async ({ email, password }) => {
   }
 
   const logUser = user[0];
-  // console.log("user", logUser);
   const comparePass = await bcrypt.compare(password, user[0].password);
 
   if (!comparePass) {
     throw ApiError.conflict("Invalid Email or Password");
   }
 
-  console.log("login successfully!");
-
   const accessToken = generateAccessToken({
     id: logUser.id,
-    email: logUser.email
+    email: logUser.email,
   });
 
   const refreshToken = generateRefreshToken({ id: logUser.id });
   const hashRefreshToken = hashToken(refreshToken);
 
-  const [res] = await db
+  const [updatedUser] = await db
     .update(users)
     .set({ refreshToken: hashRefreshToken })
-    .where(eq(users.id, logUser.id)).returning()
+    .where(eq(users.id, logUser.id))
+    .returning();
 
-    console.log("res",res)
-    const finalUser = res;
-    delete finalUser.password;
-    delete finalUser.refreshToken;
-    
-    console.log("finalUSer",finalUser)
-    return { user: finalUser, accessToken, refreshToken };
+  const finalUser = updatedUser;
+  delete finalUser.password;
+  delete finalUser.refreshToken;
+
+  return { user: finalUser, accessToken, refreshToken };
 };
 
 const logout = async (userId) => {
-await db.update(users).set({refreshToken:null}).where(eq(users.id,userId));
+  await db
+    .update(users)
+    .set({ refreshToken: null })
+    .where(eq(users.id, userId));
 };
 
 // refreshToken needs to convert into Drizzle, currently its in mongoDB.
@@ -107,43 +103,42 @@ const refreshToken = async (token) => {
 
   const decodedToken = verifyRefreshToken(token);
 
-  const user = await User.findById(decodedToken.id).select("+refreshToken");
+  const hashedToken = hashToken(token);
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.refreshToken, hashedToken))
+    .limit(1);
 
   if (!user) {
-    throw ApiError.unauthorized("user no longer exists");
+    throw ApiError.unauthorized("Invalid refresh token");
   }
 
-  if (user.refreshToken !== hashToken(token)) {
-    throw ApiError.unauthorized("Invalid refresh token - please log in again");
+  if(decodedToken.id !== user.id){
+    throw ApiError.unauthorized("Invalid refresh token");
   }
 
-  const accessToken = generateAccessToken({ id: user._id, email: user.email });
-  const refreshToken = generateRefreshToken({ id: user._id });
+  const newAccessToken = generateAccessToken({ id: user.id, email: user.email });
+  const newRefreshToken = generateRefreshToken({ id: user.id });
 
-  user.refreshToken = hashToken(refreshToken);
-  user.save({ validateBeforeSave: false });
+  const hashedNewRefresh = hashToken(newRefreshToken);
 
-  return { accessToken, refreshToken };
+  await db.update(users).set({refreshToken:hashedNewRefresh}).where(eq(users.id,user.id));
+
+  return { accessToken:newAccessToken, refreshToken:newRefreshToken };
 };
 
 const myProfile = async (userId) => {
   if (!userId)
     throw ApiError.unauthorized("You are not valid for this request.");
 
-  const [user] = await db.select().from(users).where(eq(users.id,userId));
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
 
-  console.log("user in myProfile",user);
-    delete user.password;
-    delete user.refreshToken;
-    delete user.resetPasswordToken;
-    delete user.resetPasswordExpires;
-  return { user:user };
+  delete user.password;
+  delete user.refreshToken;
+  delete user.resetPasswordToken;
+  delete user.resetPasswordExpires;
+  return { user: user };
 };
-export {
-  register,
-  login,
-  refreshToken,
-  logout,
-  myProfile,
-  
-};
+export { register, login, refreshToken, logout, myProfile };
