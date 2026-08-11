@@ -48,7 +48,7 @@ const Dashcard = ({ onDelete, ...Poll }: DashcardProps) => {
   };
 
   const handleCopy = async () => {
-    const link = `${process.env.FRONTEND_URL}/poll/${Poll.id}`;
+    const link = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/poll/${Poll.id}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success("Link copied!");
