@@ -19,6 +19,13 @@ app.use(cookieParser());
 
 app.use("/api/auth",authRoute);
 app.use("/api/pooling",poolingRoute);
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+  });
+});
+
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
