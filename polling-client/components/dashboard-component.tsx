@@ -14,7 +14,8 @@ const DashboardComponent = ({polls}:PollListProps) => {
     }
   
   return (
-    <div>
+    // RESPONSIVE: full width + horizontal padding so cards don't touch the screen edges on mobile
+    <div className="w-full px-4 sm:px-0 ">
       {polls.map((poll:Poll) => (
         <Dashcard {...poll} key={poll.id} onDelete={handleDelete}/>
       ))}

@@ -77,7 +77,8 @@ const Dashcard = ({ onDelete, ...Poll }: DashcardProps) => {
   };
 
   return (
-    <Card className="w-[600px] hover:shadow-md transition-shadow duration-200 mt-4">
+    // RESPONSIVE: fixed w-[600px] -> full width that caps at 600px, so it shrinks on mobile instead of overflowing/causing horizontal scroll
+    <Card className="w-full max-w-[600px] hover:shadow-md transition-shadow duration-200 mt-4">
       {/* Header — question + status */}
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
@@ -139,10 +140,15 @@ const Dashcard = ({ onDelete, ...Poll }: DashcardProps) => {
 
       <Separator />
 
+      <Separator />
+
       {/* Footer — actions */}
-      <CardFooter className="pt-4 flex items-center justify-between">
+      {/* RESPONSIVE: replaced forced flex-col split with a single flex-wrap row — 
+          buttons now wrap only when they don't actually fit, instead of always 
+          reserving a full extra row for Delete on mobile (less wasted height) */}
+      <CardFooter className="pt-4 flex flex-wrap items-center justify-between gap-2">
         {/* Primary actions */}
-        <div className="flex items-center gap-2 ">
+        <div className="flex items-center flex-wrap gap-2">
           <Button size="sm" onClick={handlePublish} disabled={Poll.isPublished}>
             Publish
           </Button>
@@ -167,11 +173,11 @@ const Dashcard = ({ onDelete, ...Poll }: DashcardProps) => {
           disabled={loading}
         >
           <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-          {loading?"Deleting":"Delete"}
+          {loading ? "Deleting" : "Delete"}
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
 
 export default Dashcard;

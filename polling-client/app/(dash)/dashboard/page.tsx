@@ -7,7 +7,8 @@ export default async function Dashboard() {
 
   if (!data.result || data.result.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center mt-10">
+      // RESPONSIVE: horizontal padding so the empty state isn't flush against screen edges on mobile
+      <div className="flex flex-col items-center justify-center mt-10 px-4">
         <h1>No polls.</h1>
       </div>
     );
@@ -15,7 +16,8 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div className="flex flex-col mt-10 gap-6 justify-center items-center">
+      {/* RESPONSIVE: reduced top margin on mobile, back to mt-10 from sm up */}
+      <div className="flex flex-col mt-6 sm:mt-10 gap-6 justify-center items-center">
         <DashboardComponent polls={data.result} />
       </div>
     </div>
