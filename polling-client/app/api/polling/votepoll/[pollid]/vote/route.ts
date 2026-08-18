@@ -40,7 +40,6 @@ export async function POST(req: Request, { params }: RouteProps) {
 
     const data = await response.json();
 
-    console.log("data after vote the poll, and in the nextjs backend! ",data);
 
 const nextResponse = NextResponse.json(data, {
   status: response.status,

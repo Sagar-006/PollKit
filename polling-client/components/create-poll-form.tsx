@@ -46,7 +46,6 @@ export function CreatePollForm() {
 
     const data = await createPoll.json();
     setLoading(false);
-    // console.log("data on frontend",data);
     if(data.success === false){
       toast.error(data.message)
     }

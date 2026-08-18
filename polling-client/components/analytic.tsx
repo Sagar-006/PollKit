@@ -28,8 +28,7 @@ interface AnalyticProps {
 }
 
 const Analytic = ({ poll, optionsWithCount, totalVotes }: AnalyticProps) => {
-  console.log("poll data on frontend",poll)
-  // const totalVotes = optionsWithCount.reduce((sum, o) => sum + o.count, 0);
+  
 
   const formatDate = (dateStr: string) =>{
     return format(new Date(dateStr), "dd MMM yyyy, hh:mm a");

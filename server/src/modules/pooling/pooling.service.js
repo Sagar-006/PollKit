@@ -33,7 +33,6 @@ const createPool = async (
     (option) => option.trim() !== ""
   )
 
-  console.log("valid options",validOptions);
   if (validOptions.length < 2) {
     throw ApiError.conflict("Atleast two options are needed in pool.");
   }
@@ -115,9 +114,6 @@ const getPoll = async (pollId) => {
 
 const createVote = async ({ userId, pollId, optionId, ip }) => {
 
-  console.log("at createpoll service");
-
-
   if (!pollId || !optionId) {
     throw ApiError.badRequest("missing pollId or optionId");
   }
@@ -186,7 +182,6 @@ const createVote = async ({ userId, pollId, optionId, ip }) => {
     if (vote.length === 0) {
       throw ApiError.conflict("failed at voting.");
     }
-    console.log("after vote complete",vote[0]);
 
     return {
       result: vote[0],

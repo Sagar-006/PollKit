@@ -26,7 +26,6 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       );
     }
 
-    console.log("Publish URL:", `${process.env.API_URL}/pooling/publish/${id}`);
 
     const response = await fetch(
       `${process.env.API_URL}/pooling/publish/${id}`,
@@ -40,19 +39,6 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     );
 
     const text = await response.text();
-
-    console.log("================================");
-    console.log(
-      "Express publish URL:",
-      `${process.env.API_URL}/pooling/publish/${id}`,
-    );
-    console.log("Express publish status:", response.status);
-    console.log(
-      "Express publish content-type:",
-      response.headers.get("content-type"),
-    );
-    console.log("Express publish response:", text);
-    console.log("================================");
 
     return new NextResponse(text, {
       status: response.status,

@@ -18,7 +18,6 @@ export default function SignOutButton() {
               },
             })
 
-           console.log("res of signout in ",signout) 
       router.push("/login");
       router.refresh();
     } catch (error) {

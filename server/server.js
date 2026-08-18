@@ -10,7 +10,6 @@ const client = new pg.Client({
   connectionString: process.env.NEON_DB_DIRECT,
 });
 await client.connect();
-console.log("connected!");
 await client.end();
 
 const start = async () => {

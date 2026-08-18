@@ -33,7 +33,6 @@ export async function POST() {
 
     const data = await response.json();
 
-    console.log("Express refresh response:", data);
 
     // Forward Express error
     if (!response.ok) {
@@ -42,16 +41,6 @@ export async function POST() {
       });
     }
 
-    // Your Express ApiResponse.ok() returns:
-    //
-    // {
-    //   success: true,
-    //   message: "...",
-    //   data: {
-    //     accessToken: "...",
-    //     refreshToken: "..."
-    //   }
-    // }
 
     if (!data.data) {
       console.error("Refresh response does not contain data:", data);

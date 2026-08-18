@@ -53,10 +53,6 @@ export function PollCard({
       // Read the response only once.
       const data = await response.json();
 
-          console.log(
-            "data after vote the poll, and in the nextjs frontend! ",
-            data,
-          );
 
           const message = data?.result?.message; // ← get message
           setVoteMessage(message);   

@@ -3,7 +3,6 @@ import ApiError from "../../common/utils/api-error.js";
 const createPool = async (req, res, next) => {
   try {
     const { question, pollOptions, anonymousVoting, expiresAt } = req.body;
-    // console.log("req body", req.body);
     const result = await pollingService.createPool(
       req.user.id,
       question,
@@ -32,14 +31,11 @@ const getPoll = async (req, res) => {
   res.json({ result: result });
 };
 const createVote = async (req, res, next) => {
-    console.log("at createvote controller");
 
   try {
     const pollId = req.params.pollid;
-    console.log("pollid on controller", pollId);
     
     const alreadyVoted = req.cookies[`voted-${pollId}`];
-    console.log("cookie in controller", req.cookies[`voted-${pollId}`]);
 
     if (alreadyVoted) {
       throw ApiError.badRequest("You already voted for this poll");

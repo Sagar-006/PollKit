@@ -15,31 +15,13 @@ const login = async (req, res, next) => {
       req.body,
     );
 
-    // console.log(refreshToken, "refreshToken");
-    // console.log(accessToken, "accessToken");
-    // console.log(user, "user");
-
-    // res.cookie("accessToken", accessToken, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production", // ✅ false in dev
-    //   sameSite: "strict",
-    //   maxAge: 30 * 1000,
-    // });
-
-    // res.cookie("refreshToken", refreshToken, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production",
-    //   sameSite: "strict",
-    //   maxAge: 60 * 1000,
-    // });
-
     ApiResponse.ok(res, "Login successfully", {
       user,
       accessToken,
       refreshToken,
     });
   } catch (e) {
-    next(e); // ✅ passes ApiError to global error handler → returns JSON
+    next(e); // 
   }
 };
 
@@ -51,20 +33,6 @@ const refreshToken = async (req, res, next) => {
       return next(ApiError.unauthorized("No refresh token"));
     }
     const { accessToken, refreshToken } = await authService.refreshToken(token);
-
-    // res.cookie("accessToken", accessToken, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production",
-    //   sameSite: "strict",
-    //   maxAge: 30 * 1000, // 5 min
-    // });
-
-    // res.cookie("refreshToken", refreshToken, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production",
-    //   sameSite: "strict",
-    //   maxAge: 60 * 1000, // 10 min
-    // });
 
     ApiResponse.ok(res, "Token refreshed", {
       accessToken,
